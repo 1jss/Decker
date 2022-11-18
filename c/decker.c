@@ -2415,7 +2415,6 @@ void sync(){
 	pair disp={0,0};
 	SDL_GetWindowSize(win,&disp.x,&disp.y);
 	pair size=buff_size(context.buffer);
-	int scale=MIN(disp.x/size.x,disp.y/size.y);
 	ev.mu=ev.md=ev.click=ev.dclick=ev.tab=ev.action=ev.dir=ev.exit=ev.eval=ev.scroll=ev.rdown=ev.rup=0;
 	if(ev.clicktime)ev.clicktime--;
 	if(ev.clicklast)ev.clicklast--;
@@ -2476,10 +2475,10 @@ void sync(){
 			}
 		}
 		if(e.type==SDL_MOUSEMOTION){
-			pair b={(disp.x-(size.x*scale))/2,(disp.y-(size.y*scale))/2};
+			pair b={(disp.x/2-size.x)/2,(disp.y/2-size.y)/2};
 			if(!msg.pending_drag)pointer_prev=pointer;
 			ev.rawpos=(pair){e.motion.x,e.motion.y};
-			pointer=ev.pos=(pair){(e.motion.x-b.x)/scale,(e.motion.y-b.y)/scale};
+			pointer=ev.pos=(pair){(e.motion.x/2-b.x),(e.motion.y/2-b.y)};
 			if(pointer_held)msg.pending_drag=1;
 		}
 		if(e.type==SDL_MOUSEWHEEL     ){ev.scroll=e.wheel.y<0?1:e.wheel.y>0?-1:0;}
@@ -2533,17 +2532,17 @@ void sync(){
 	draw_frame(patterns_pal(ifield(deck,"patterns")),context.buffer,p,pitch,dr.show_anim?frame_count:0,mask);frame_count++;
 	SDL_UnlockTexture(gfx);
 	SDL_Rect src={0,0,size.x,size.y};
-	SDL_Rect dst={(disp.x-scale*size.x)/2,(disp.y-scale*size.y)/2,scale*size.x,scale*size.y};
+	SDL_Rect dst={(disp.x/2-size.x)/2,(disp.y/2-size.y)/2,size.x,size.y};
 	SDL_SetRenderDrawColor(ren,0x00,0x00,0x00,0xFF);
 	SDL_RenderClear(ren);
 	SDL_RenderCopy(ren,gfx,&src,&dst);
-	pair tsize=buff_size(TOOLB);int tscale=MIN((disp.x-scale*size.x)/(2*tsize.x),disp.y/tsize.y);
+	pair tsize=buff_size(TOOLB);int tscale=MIN((disp.x/2-size.x)/(2*tsize.x),disp.y/(2*tsize.y));
 	int showwings=toolbars_enable&&tscale>0&&!(lb(ifield(deck,"locked")))&&ms.type==modal_none&&uimode!=mode_script;
 	if(showwings){
-		SDL_Rect src={0,0,tsize.x,tsize.y},dst={0,(disp.y-tscale*tsize.y)/2,tscale*tsize.x,tscale*tsize.y};
+		SDL_Rect src={0,0,tsize.x,tsize.y},dst={0,(disp.y/2-tscale*tsize.y)/2,tscale*tsize.x,tscale*tsize.y};
 		ltoolbar(
-			(pair){(ev.rawpos .x-dst.x)/tscale,(ev.rawpos .y-dst.y)/tscale},
-			(pair){(ev.rawdpos.x-dst.x)/tscale,(ev.rawdpos.y-dst.y)/tscale}
+			(pair){(ev.rawpos .x/2-dst.x)/tscale,(ev.rawpos .y/2-dst.y)/tscale},
+			(pair){(ev.rawdpos.x/2-dst.x)/tscale,(ev.rawdpos.y/2-dst.y)/tscale}
 		);
 		SDL_LockTexture(gtool,NULL,(void**)&p,&pitch);
 		draw_frame(patterns_pal(ifield(deck,"patterns")),TOOLB,p,pitch,dr.show_anim?frame_count:0,0);
@@ -2551,10 +2550,10 @@ void sync(){
 		SDL_RenderCopy(ren,gtool,&src,&dst);
 	}
 	if(showwings){
-		SDL_Rect src={0,0,tsize.x,tsize.y},dst={disp.x-tscale*tsize.x,(disp.y-tscale*tsize.y)/2,tscale*tsize.x,tscale*tsize.y};
+		SDL_Rect src={0,0,tsize.x,tsize.y},dst={disp.x/2-tscale*tsize.x,(disp.y/2-tscale*tsize.y)/2,tscale*tsize.x,tscale*tsize.y};
 		rtoolbar(
-			(pair){(ev.rawpos .x-dst.x)/tscale,(ev.rawpos .y-dst.y)/tscale},
-			(pair){(ev.rawdpos.x-dst.x)/tscale,(ev.rawdpos.y-dst.y)/tscale}
+			(pair){(ev.rawpos .x/2-dst.x)/tscale,(ev.rawpos .y/2-dst.y)/tscale},
+			(pair){(ev.rawdpos.x/2-dst.x)/tscale,(ev.rawdpos.y/2-dst.y)/tscale}
 		);
 		int animate=box_in((rect){dst.x,dst.y,dst.w,dst.h},ev.rawpos)&&dr.show_anim?frame_count:0;
 		SDL_LockTexture(gtool,NULL,(void**)&p,&pitch);
@@ -3217,12 +3216,14 @@ void load_deck(lv*d){
 	dset(env,lmistr("buff"),context.buffer);
 	#define serr(x) {if(x==NULL)printf("SDL error: %s\n",SDL_GetError()),exit(1);}
 	SDL_DisplayMode dis;SDL_GetDesktopDisplayMode(0,&dis);
-	int minscale=(size.x*2<=dis.w&&size.y*2<=dis.h)?2:1;
+	int minscale=2;
 	if(win){SDL_SetWindowSize(win,size.x*minscale,size.y*minscale),SDL_DestroyTexture(gfx);}
 	else{
 		win=SDL_CreateWindow("Decker",SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,size.x*minscale,size.y*minscale,SDL_WINDOW_SHOWN|SDL_WINDOW_ALLOW_HIGHDPI);serr(win);
 		ren=SDL_CreateRenderer(win,-1,SDL_RENDERER_SOFTWARE);serr(ren);
 	}
+	SDL_RenderSetScale(ren, minscale, minscale);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 	gfx=SDL_CreateTexture(ren,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STREAMING,size.x,size.y);
 	SDL_SetWindowPosition(win,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED);
 	if(!gtool){pair s=buff_size(TOOLB);gtool=SDL_CreateTexture(ren,SDL_PIXELFORMAT_ARGB8888,SDL_TEXTUREACCESS_STREAMING,s.x,s.y);}
