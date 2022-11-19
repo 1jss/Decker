@@ -1145,7 +1145,7 @@ void modal_exit(int value){
 	}
 	if((ms.subtype==modal_save_deck||ms.subtype==modal_save_locked)&&value){
 		lv*path=modal_save_path("");
-		if(directory_exists(path->sv)&&ms.type!=modal_confirm){modal_save_replace(modal_save_deck,"deck",path);return;}
+		if(directory_exists(path->sv)&&ms.type!=modal_confirm){modal_save_replace(modal_save_locked,"deck",path);return;}
 		if(ms.subtype==modal_save_locked)iwrite(deck,lmistr("locked"),ONE);
 		save_deck(path);
 		if(ms.subtype==modal_save_locked)iwrite(deck,lmistr("locked"),NONE);
@@ -2339,7 +2339,7 @@ void sfx_install(lv*sfx,clip_state*target){
 lv* n_play(lv*self,lv*z){
 	if(z->c>1&&matchr(z->lv[1],lmistr("loop"))){
 		lv*x=l_first(z);if(lis(x))x=dget(ifield(deck,"sounds"),x);
-		if(orig_loop&&matchr(orig_loop,x)){} // don't re-trigger!
+		if(orig_loop&&orig_loop==x){} // don't re-trigger!
 		else if(sound_is(x)&&ln(ifield(x,"size"))>0){sfx_install(x,&audio_loop),orig_loop=x;} // play
 		else{audio_loop.clip=orig_loop=NULL;} // stop the loop
 		return NONE;
@@ -2953,7 +2953,7 @@ void tick(lv*env){
 					ms.verb=lmcstr("Edit");
 				}
 			}
-			if(menu_item("Properties...",ob.sel->c==1,'\0'))object_properties(ob.sel->lv[0]);
+			if(menu_item("Properties...",ob.sel->c==1,'\0')||(ob.sel->c==1&&ev.action))object_properties(ob.sel->lv[0]);
 		}
 	}
 	widget_setup();
